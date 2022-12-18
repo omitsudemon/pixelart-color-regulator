@@ -19,4 +19,7 @@ def extractPalette(palette):
             output.append(RGBToHex((r,g,b)))
     return output
 
-print(extractPalette(picture.getcolors()))
+if picture.mode == 'P':
+    print(extractPalette(picture.convert('RGBA').getcolors()))
+else:
+    print(extractPalette(picture.getcolors()))

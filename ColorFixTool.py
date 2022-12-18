@@ -16,6 +16,16 @@ palette = Image.open(paletteDir)
 print("Width {0}, Height: {1}".format(picture.width, picture.height))
 paletteColors = palette.getcolors()
 
+mode = picture.mode
+
+if mode == 'P':
+    print('Image is in palette mode. Press y to convert to RGB, or n to exit. (then press enter)')
+    option = input()
+    if option == 'y':
+        picture = picture.convert('RGBA')
+    else:
+        exit()
+
 def hexToRGB(hexcolor):
     return tuple(int(hexcolor[i:i+2], 16) for i in (0, 2, 4))
 
