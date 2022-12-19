@@ -1,30 +1,73 @@
 from PIL import Image
 import sys
+import os
+
+outputfolder = './output'
+inputfolder = './input'
+
+fileNamesList = []
+#read all files in input, process and save to output
 
 if len(sys.argv) != 3:
     print("""
     Usage:
     python3 ColorFixTool.py colorPalette.png imageToFix.png
+    python3 ColorFixTool.py colorPalette.png batch
     """)
     exit()
 
 paletteDir = sys.argv[1]
-filename = sys.argv[2][:-4]
-extension = sys.argv[1][-4::]
-picture = Image.open(filename+extension)
-palette = Image.open(paletteDir)
-print("Width {0}, Height: {1}".format(picture.width, picture.height))
-paletteColors = palette.getcolors()
 
-mode = picture.mode
+def processFix(picture, palette, filename):
+    print("Width {0}, Height: {1}".format(picture.width, picture.height))
+    paletteColors = palette.getcolors()
+    mode = picture.mode
 
-if mode == 'P':
-    print('Image is in palette mode. Press y to convert to RGB, or n to exit. (then press enter)')
-    option = input()
-    if option == 'y':
-        picture = picture.convert('RGBA')
-    else:
-        exit()
+    if mode == 'P':
+        print('Image is in palette mode. Press y to convert to RGB, or n to exit. (then press enter)')
+        option = input()
+        if option == 'y':
+            picture = picture.convert('RGBA')
+        else:
+            exit()
+    
+    selectedPalette = extractPalette(paletteColors)
+    totalPixels = 0
+    totalErrors = 0
+    corrections = []
+
+    for x in range(picture.width):
+        for y in range(picture.height):
+            r,g,b,a = picture.getpixel( (x, y) )
+            if a != 0: #transparent, also could check if transparency is always 255
+                totalPixels += 1
+                hexcolor = RGBToHex((r,g,b))
+                if hexcolor not in selectedPalette:
+                    totalErrors += 1
+                    #print("Red: {0}, Green: {1}, Blue: {2}, Alpha: {3}".format(r,g,b,a))
+                    #print(hexcolor)
+                    arr = similarityArray(hexcolor, selectedPalette)
+                    sim = 0
+                    pos = -1
+                    for i in range(len(arr)):
+                        if arr[i] > sim:
+                            sim = arr[i]
+                            pos = i
+                    correction = [hexcolor, selectedPalette[pos]]
+                    if correction not in corrections:
+                        corrections.append(correction)
+                    selectedColor = hexToRGB(selectedPalette[pos])
+                    sR, sG, sB = selectedColor
+                    picture.putpixel((x,y), (sR, sG, sB, 255))
+                    
+    picture.save(filename)
+    print('All the different corrections made:')
+    for cor in corrections:
+        print(cor[0] + ' -> ' + cor[1])
+    print('Total pixels: {0}'.format(totalPixels))
+    print('Total errors: {0}'.format(totalErrors))
+    print('Percentage of color error: {0:.3f}%'.format((totalErrors / totalPixels)*100))
+
 
 def hexToRGB(hexcolor):
     return tuple(int(hexcolor[i:i+2], 16) for i in (0, 2, 4))
@@ -54,55 +97,30 @@ def colorSimilarity(color1, color2):
     total = 765 / total
 
     return total
-
-#selectedPalette = paletteFemale
-selectedPalette = extractPalette(paletteColors)
-
 """
 Returns array with similarity with all the palette's colors and a hex color
 Maybe there could be a slight chance of very similar colors in the palette, so I'm storing all possibilities.
 """
-def similarityArray(color):
+def similarityArray(color, selectedPalette):
     output = []
     for p in selectedPalette:
         output.append(colorSimilarity(p, color))
     return output
 
-totalPixels = 0
-totalErrors = 0
-corrections = []
+def start():
+    if sys.argv[2] == 'batch':
+        fileNamesList = os.listdir('./input')
+        picturesList = []
 
+        for fn in fileNamesList:
+            picture = Image.open(inputfolder + '/' + fn)
+            palette = Image.open(paletteDir)
+            processFix(picture, palette, outputfolder + '/' + fn)
+    else:
+        filename = sys.argv[2]
+        picture = Image.open(filename)
+        palette = Image.open(paletteDir)
+        processFix(picture, palette, filename.replace('.', '-fixed.'))
 
-
-for x in range(picture.width):
-    for y in range(picture.height):
-        r,g,b,a = picture.getpixel( (x, y) )
-        if a != 0: #transparent, also could check if transparency is always 255
-            totalPixels += 1
-            hexcolor = RGBToHex((r,g,b))
-            if hexcolor not in selectedPalette:
-                totalErrors += 1
-                #print("Red: {0}, Green: {1}, Blue: {2}, Alpha: {3}".format(r,g,b,a))
-                #print(hexcolor)
-                arr = similarityArray(hexcolor)
-                sim = 0
-                pos = -1
-                for i in range(len(arr)):
-                    if arr[i] > sim:
-                        sim = arr[i]
-                        pos = i
-                correction = [hexcolor, selectedPalette[pos]]
-                if correction not in corrections:
-                    corrections.append(correction)
-                selectedColor = hexToRGB(selectedPalette[pos])
-                sR, sG, sB = selectedColor
-                picture.putpixel((x,y), (sR, sG, sB, 255))
-                
-picture.save(filename+'-fixed-'+extension)
-print('All the different corrections made:')
-for cor in corrections:
-    print(cor[0] + ' -> ' + cor[1])
-print('Total pixels: {0}'.format(totalPixels))
-print('Total errors: {0}'.format(totalErrors))
-print('Percentage of color error: {0:.3f}%'.format((totalErrors / totalPixels)*100))
-#picture.show()
+if __name__ == "__main__":
+    start()
