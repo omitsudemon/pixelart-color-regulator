@@ -11,8 +11,15 @@ fileNamesList = []
 if len(sys.argv) != 3:
     print("""
     Usage:
-    python3 ColorFixTool.py colorPalette.png imageToFix.png
-    python3 ColorFixTool.py colorPalette.png batch
+
+    One image.
+        python3 ColorFixTool.py colorPalette.png imageToFix.png
+    
+    Many images.
+        python3 ColorFixTool.py colorPalette.png batch
+
+    For the batch operation create 2 folders output and input. Put your
+    images in the input folder adn execute the previous command.
     """)
     exit()
 
@@ -25,11 +32,13 @@ def processFix(picture, palette, filename):
 
     if mode == 'P':
         print('Image is in palette mode. Press y to convert to RGB, or n to exit. (then press enter)')
-        option = input()
-        if option == 'y':
-            picture = picture.convert('RGBA')
-        else:
-            exit()
+        picture = picture.convert('RGBA')
+
+        #option = input()
+        #if option == 'y':
+        #    picture = picture.convert('RGBA')
+        #else:
+        #    exit()
     
     selectedPalette = extractPalette(paletteColors)
     totalPixels = 0
